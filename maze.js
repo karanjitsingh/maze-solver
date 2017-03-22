@@ -1,29 +1,39 @@
 var maze=[];
-var n = 61, m = 81;
+var n = 81, m = 181;
 var exits = 1;
 
 var Filters = {
-	visited: function (neighbor) {
-		if(neighbor.x < 0 || neighbor.y < 0 || neighbor.x >= m || neighbor.y >= n)
+	visited: function (neighbour) {
+		if(neighbour.x < 0 || neighbour.y < 0 || neighbour.x >= m || neighbour.y >= n)
 			return false;
-		return maze[neighbor.y][neighbor.x];
+		return maze[neighbour.y][neighbour.x];
 	},
-	notVisited: function (neighbor) {
-		if (neighbor.x < 0 || neighbor.y < 0 || neighbor.x >= m || neighbor.y >= n)
+	notVisited: function (neighbour) {
+		if (neighbour.x < 0 || neighbour.y < 0 || neighbour.x >= m || neighbour.y >= n)
 			return false;
-		return !maze[neighbor.y][neighbor.x];
-	}
+		return !maze[neighbour.y][neighbour.x];
+	},
+	custom: function (neighbour, comparision) {
+		if (neighbour.x < 0 || neighbour.y < 0 || neighbour.x >= m || neighbour.y >= n)
+			return false;
+		return comparision(maze[neighbour.y][neighbour.x]);
+	},
+	levelTwo: function (neighbour) {
+		if (neighbour.x < 0 || neighbour.y < 0 || neighbour.x >= m || neighbour.y >= n)
+			return false;
+		return maze[neighbour.y][neighbour.x] == 2;
+	},
 };
 
-function getNeighbors(pos,distance) {
-	var neighbors= [];
+function getneighbours(pos,distance) {
+	var neighbours= [];
 	distance = distance || 2;
-	neighbors.push({x:pos.x-distance,y:pos.y});
-	neighbors.push({x:pos.x+distance,y:pos.y});
-	neighbors.push({x:pos.x,y:pos.y-distance});
-	neighbors.push({x:pos.x,y:pos.y+distance});
+	neighbours.push({x:pos.x-distance,y:pos.y});
+	neighbours.push({x:pos.x+distance,y:pos.y});
+	neighbours.push({x:pos.x,y:pos.y-distance});
+	neighbours.push({x:pos.x,y:pos.y+distance});
 
-	return neighbors;
+	return neighbours;
 }
 
 function gen(n, m, exits) {
@@ -43,13 +53,13 @@ function gen(n, m, exits) {
 
 	while(1) {
 		//Generate Neighbours
-		var unvisitedNodes = getNeighbors(pos);
+		var unvisitedNodes = getneighbours(pos);
 
-		//Filter visited and invalid neighbors
+		//Filter visited and invalid neighbours
 		unvisitedNodes = unvisitedNodes.filter(Filters.visited);
 
 		if(unvisitedNodes.length) {
-			//Select a random unvisited neighbor
+			//Select a random unvisited neighbour
 			var node = unvisitedNodes[Math.floor(Math.random() * unvisitedNodes.length)];
 			//Push current cell to stack
 			stack.push(pos);
@@ -58,7 +68,7 @@ function gen(n, m, exits) {
 			maze[node.y][node.x] = 0;
 			maze[(pos.y + node.y) / 2][(pos.x + node.x) / 2] = 0;
 
-			//Mark the chosen neighbor as visited
+			//Mark the chosen neighbour as visited
 			pos = node;
 			visited.push(pos);
 		} else if (stack.length) {
@@ -166,80 +176,131 @@ var Heuristics = {
 	}
 };
 
-function markVisited(pos, color) {
+function markVisited(pos, color, value) {
 	var mazeDiv = $id('maze');
 	mazeDiv.querySelectorAll(".row")[pos.y].querySelectorAll("div")[pos.x].style.background = color;
-	maze[pos.y][pos.x] = 2;
+	maze[pos.y][pos.x] = value;
 }
 
+var getNextNode =  function(pos,color) {
+	var cost = 0;
+	color = color || "";
 
-function solve(h) {
+	//Generate Neighbours
+	var neighbours = getneighbours(pos,1);
+
+	//Filter visited and invalid neighbours
+	neighbours = neighbours.filter(Filters.notVisited);
+
+	while(neighbours.length==1) {
+		cost++;
+		pos=neighbours[0];
+		markVisited(pos,color,2);
+		neighbours = getneighbours(pos,1);
+		neighbours = neighbours.filter(Filters.notVisited);
+	}
+
+	if(cost) {													//Expanding node with single branch
+		return [{x: pos.x, y: pos.y, cost: cost}];
+	} else if(neighbours.length && pos.cost != undefined) {		//Expanding node with multiple branches
+		var nodes=[];
+		for(var i = 0; i < neighbours.length; i++) {
+			markVisited(neighbours[i],color,2);
+			var node = getNextNode(neighbours[i],color)[0];
+			node.cost++;
+			nodes.push(node);
+		}
+		return nodes;
+	} else {
+		if(pos.cost == undefined)								//Expanding exit node
+			return [{x: pos.x, y: pos.y, cost: 1}];
+		else
+			return [];											//End for expanding node
+	}
+
+};
+
+function delay(time) {
+	var x = 0;
+	setTimeout(function () {
+		x = 1;
+	},time);
+	while(!x);
+}
+
+function visitNode(from, index) {
+	//Generate Neighbours
+	var neighbours = getneighbours(from,1);
+	var pos;
+
+	//Filter visited and invalid neighbours
+	neighbours = neighbours.filter(Filters.levelTwo);
+
+	var path = [from];
+	console.log("node start",path);
+
+	do {
+		pos=pos?neighbours[0]:neighbours[index];
+		path.push(pos);
+		markVisited(pos,"green",3);
+		console.log("node continue", path);
+		neighbours = getneighbours(pos,1);
+		neighbours = neighbours.filter(Filters.levelTwo);
+	} while(neighbours.length==1);
+
+	return path;
+}
+
+function generateSolution() {
+
+	var mazex = maze;
+
 	var start = {x:0,y:1,cost:0};
 	var queue = [];
 
-	var getNextNode =  function(pos) {
-		console.log("expanding",pos);
-		var cost = 0;
-
-		//Generate Neighbours
-		var neighbors = getNeighbors(pos,1);
-
-		//Filter visited and invalid neighbors
-		neighbors = neighbors.filter(Filters.notVisited);
-
-		while(neighbors.length==1) {
-			cost++;
-			pos=neighbors[0];
-			markVisited(pos,"blue");
-			neighbors = getNeighbors(pos,1);
-			neighbors = neighbors.filter(Filters.notVisited);
-		}
-
-		if(cost) {													//Expanding node with single branch
-			console.log("Expanded", {x: pos.x, y: pos.y, cost: cost});
-			return [{x: pos.x, y: pos.y, cost: cost}];
-		} else if(neighbors.length && pos.cost != undefined) {		//Expanding node with multiple branches
-			var nodes=[];
-			console.log("neighbor", neighbors);
-			for(var i = 0; i < neighbors.length; i++) {
-				markVisited(neighbors[i],"blue");
-				var node = getNextNode(neighbors[i])[0];
-				node.cost++;
-				nodes.push(node);
-			}
-			return nodes;
-		} else {
-			if(pos.cost == undefined)								//Expanding exit node
-				return [{x: pos.x, y: pos.y, cost: 1}];
-			else
-				return [];											//End for expanding node
-		}
-
-	};
-
 	queue.sortedPush(start,'cost');
-	console.log("init queue", queue, start);
 
-	markVisited(start, "green");
+	// start.parent = 'start';
+	start.index = 0;
+	start.path = [start];
+
+	markVisited(start, "green", 2);
 
 	var i=0;
 
 	while(queue.length) {
 
 		var node = queue.shift();
-		console.log("node", node);
+
 		if(node.x == m-1 || node.y == n-1) {
-			markVisited(node, "green");
+			markVisited(node, "green", 2);
+			console.log(start.path.length);
+
+			var path = [-1];
+
+			for(var i=0;i<node.path.length - 1; i++) {
+				markVisited(node.path[i],"#ff0061",3);
+				var nodePath = visitNode(node.path[i],node.path[i+1].index);
+				console.log("nodepath", nodePath);
+				path = path.concat(nodePath);
+				path.push(-1);
+			}
+
+			console.log(path);
+
 			break;
 		}
 
-
-
 		//Get adjacent unvisited nodes
-		var nodes = getNextNode(node);
+		var nodes = getNextNode(node, "blue");
+		node.nodes = nodes;
 
 		for(var i=0;i<nodes.length;i++) {
-			markVisited(nodes[i],"#ff0061");
+			markVisited(nodes[i],"#ff0061",2);
+			// nodes[i].parent = node;
+			nodes[i].index = i;
+			nodes[i].path = node.path.slice();
+			nodes[i].path.push(nodes[i]);
 			queue.sortedPush(nodes[i], 'cost');
 		}
 	}
@@ -247,5 +308,4 @@ function solve(h) {
 }
 
 newMaze(n,m,exits);
-
-solve(Heuristics.ManhattanDistance);
+generateSolution();

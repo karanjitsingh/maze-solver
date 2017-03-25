@@ -63,7 +63,7 @@ var Maze = function(n, m, options) {
 				stack.push(pos);
 
 				//Remove the wall between the nodes
-				markVisited({x:(pos.y + node.y) / 2, y:(pos.x + node.x)/2}, "#FFFFFF", 0, options.renderGen);
+				markVisited({y:(pos.y + node.y) / 2, x:(pos.x + node.x)/2}, "#FFFFFF", 0, options.renderGen);
 				markVisited(node, "#FFFFFF", 0, options.renderGen);
 
 				//Mark the chosen neighbour as visited
@@ -234,6 +234,7 @@ var Maze = function(n, m, options) {
 
 	function exploreSolution(heuristic) {
 		var start = generateSolution(heuristic);
+		return;
 		var solution =  start.solution;
 
 		function indexOf(arr, node) {
@@ -338,9 +339,9 @@ var Heuristics = {
 	}
 };
 
-var m = Maze(45,45, {
+var m = Maze(81,121, {
 	ctx: true,
-	render: true,
+	render: false,
 	renderGen: true,
 	renderExploration: true,
 	renderSolution: true

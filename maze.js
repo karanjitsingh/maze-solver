@@ -1,4 +1,17 @@
+var theme = {
+	background: "#f8e9e9",
+	border: "#394648",
+	mark: "#DA6944",
+	exploration: "#cbac88",
+	solution: "#69995d"
+}
+
 var Maze = function(n, m, options) {
+	if (n % 2 == 0)
+		n++;
+	if (m % 2 == 0)
+		m++;
+
 	var maze = [];
 	var exit;
 
@@ -44,10 +57,10 @@ var Maze = function(n, m, options) {
 			maze[i]=new Array(m+1).join('0').split('').map(function () {	return 1; });
 
 		//Mark entrance
-		markVisited({y:1, x:0}, "#FFFFFF", 0, options.renderGen);
+		markVisited({y:1, x:0}, theme.background, 0, options.renderGen);
 
 		//Mark start point
-		markVisited(pos, "#FFFFFF", 0, options.renderGen);
+		markVisited(pos, theme.background, 0, options.renderGen);
 
 		while(1) {
 			//Generate Neighbours
@@ -63,8 +76,8 @@ var Maze = function(n, m, options) {
 				stack.push(pos);
 
 				//Remove the wall between the nodes
-				markVisited({y:(pos.y + node.y) / 2, x:(pos.x + node.x)/2}, "#FFFFFF", 0, options.renderGen);
-				markVisited(node, "#FFFFFF", 0, options.renderGen);
+				markVisited({y:(pos.y + node.y) / 2, x:(pos.x + node.x)/2}, theme.background, 0, options.renderGen);
+				markVisited(node, theme.background, 0, options.renderGen);
 
 				//Mark the chosen neighbour as visited
 				pos = node;
@@ -90,7 +103,7 @@ var Maze = function(n, m, options) {
 			} while(maze[a][b] == 0 || maze[a-1][b] == 0 || maze[a+1][b] == 0 || maze[a][b-1] != 0 )
 		}
 		exit = {y:a, x: b};
-		markVisited(exit, "#FFFFFF", 0, options.renderGen);
+		markVisited(exit, theme.background, 0, options.renderGen);
 
 		return maze;
 	}
@@ -123,7 +136,7 @@ var Maze = function(n, m, options) {
 			return null;
 
 		encoder = new GIFEncoder();
-		encoder.setRepeat(1);
+		encoder.setRepeat(0);
 		encoder.setDelay(0.001);
 
 		return encoder;
@@ -136,10 +149,10 @@ var Maze = function(n, m, options) {
 		if(ctx.encoder && options.renderGen !== false)
 			ctx.encoder.start();
 
-		ctx.fillStyle = "#000000";
+		ctx.fillStyle = theme.border;
 		ctx.fillRectWithEncoder(0, 0, m*10, n*10, options.renderGen !== false);
 
-		ctx.fillStyle = "#FFFFFF";
+		ctx.fillStyle = theme.border;
 
 		gen(n,m,ctx);
 
@@ -203,7 +216,7 @@ var Maze = function(n, m, options) {
 		queue.sortedPush(start,h?'hcost':'cost');
 		start.path = [start];
 
-		markVisited(start, "#ff0061", 2, options.renderExploration);
+		markVisited(start, theme.mark, 2, options.renderExploration);
 
 		var i=0;
 
@@ -211,17 +224,17 @@ var Maze = function(n, m, options) {
 			var node = queue.shift();
 
 			if(node.x == m-1 || node.y == n-1) {		// If node is exit node / goal node
-				markVisited(node, "#ff0061", 2, options.renderExploration);
+				markVisited(node, theme.mark, 2, options.renderExploration);
 				start.solution = node.path;
 				break;
 			}
 
 			//Get adjacent unvisited nodes
-			var nodes = getNextNode(node, "#0000FF");
+			var nodes = getNextNode(node, theme.exploration);
 			node.nodes = nodes;
 
 			for(var i=0;i<nodes.length;i++) {
-				markVisited(nodes[i],"#ff0061",2, options.renderExploration);
+				markVisited(nodes[i],theme.mark,2, options.renderExploration);
 				nodes[i].path = node.path.slice();
 				nodes[i].path.push(nodes[i]);
 				nodes[i].hcost = h?h(nodes[i], exit):0;
@@ -234,7 +247,7 @@ var Maze = function(n, m, options) {
 
 	function exploreSolution(heuristic) {
 		var start = generateSolution(heuristic);
-		return;
+		// return;
 		var solution =  start.solution;
 
 		function indexOf(arr, node) {
@@ -244,7 +257,7 @@ var Maze = function(n, m, options) {
 			return 0;
 		}
 
-		markVisited(solution[0],"#00ff00", 3, options.renderSolution);
+		markVisited(solution[0],theme.solution, 3, options.renderSolution);
 		for(var i = 0; i < solution.length - 1; i++) {
 			var next = solution[i+1];
 			traverseToNode(solution[i], indexOf(solution[i].nodes, next));
@@ -263,7 +276,7 @@ var Maze = function(n, m, options) {
 			do {
 				pos=pos?neighbours[0]:neighbours[index];
 				path.push(pos);
-				markVisited(pos,"#00FF00",3, options.renderSolution);
+				markVisited(pos, theme.solution,3, options.renderSolution);
 				neighbours = getNeighbours(pos,1);
 				neighbours = neighbours.filter(Filters.levelTwo);
 			} while(neighbours.length==1);
@@ -273,8 +286,11 @@ var Maze = function(n, m, options) {
 
 	function renderGIF() {
 		var binary_gif = ctx.encoder.stream().getData();
-		var data_url = 'data:image/gif;base64,' + encode64(binary_gif);
-		window.open(data_url);
+		var data = 'data:image/gif;base64,' + encode64(binary_gif);
+		// window.open(data_url);
+		var img = document.createElement('img');
+		img.src = data;
+		document.body.appendChild(img);
 	}
 	
 	//Initialize Maze
@@ -339,10 +355,10 @@ var Heuristics = {
 	}
 };
 
-var m = Maze(81,121, {
+var m = Maze(30,30, {
 	ctx: true,
-	render: false,
-	renderGen: true,
+	render: true,
+	renderGen: false,
 	renderExploration: true,
 	renderSolution: true
 });
